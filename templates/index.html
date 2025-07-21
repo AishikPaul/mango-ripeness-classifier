@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mango Ripeness Classifier</title>
+</head>
+<body>
+    <h2>Mango Ripeness Classifier</h2>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="image" accept="image/*" required>
+        <button type="submit">Predict</button>
+    </form>
+
+    {% if image_path %}
+        <h3>Uploaded Image:</h3>
+        <img src="{{ image_path }}" alt="Uploaded Image" width="300">
+        <h3>Prediction: {{ prediction }}</h3>
+        <!-- <p>Confidence: {{ confidence }}</p> -->
+    {% endif %}
+</body>
+</html>
+
