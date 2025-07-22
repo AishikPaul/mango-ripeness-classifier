@@ -10,7 +10,9 @@
         <button type="submit">Predict</button>
     </form>
 
-    {% if image_path %}
+    {% if error %}
+        <h3 style="color: red;">{{ error }}</h3>
+    {% elif image_path %}
         <h3>Uploaded Image:</h3>
         <img src="{{ image_path }}" alt="Uploaded Image" width="300">
         <h3>Prediction: {{ prediction }}</h3>
@@ -18,4 +20,3 @@
     {% endif %}
 </body>
 </html>
-
