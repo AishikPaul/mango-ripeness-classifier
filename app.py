@@ -1,36 +1,46 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect
 import cv2
 import numpy as np
 import joblib
 from werkzeug.utils import secure_filename
+from threading import Timer
+from ultralytics import YOLO
 
-# Load model and scaler
+from your_feature_module import extract_features  # Or paste directly if inline
+
+# Load models
 rf = joblib.load("random_forest_model.pkl")
 scaler = joblib.load("scaler.pkl")
+yolo_model = YOLO("best.pt")  # Adjust as needed
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
-
-# Create uploads folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-
-# Feature extraction function (your original one here)
-from your_feature_module import extract_features  # If separated into a file
-
-def predict_image_class(image_path):
+def check_and_classify_mango(image_path, conf_thresh=0.8):
     img = cv2.imread(image_path)
     if img is None:
-        return "Invalid image", 0
+        return None, None, "Image not found."
 
-    features = extract_features(img)
+    results = yolo_model(image_path, conf=conf_thresh, verbose=False)
+    detections = results[0].boxes
+
+    if detections is None or len(detections) == 0:
+        return None, None, "No mango detected."
+
+    # Use first detection
+    box = detections[0].xyxy.cpu().numpy().astype(int)[0]
+    x1, y1, x2, y2 = box
+    cropped_img = img[y1:y2, x1:x2]
+
+    features = extract_features(cropped_img)
     features = np.array(features).reshape(1, -1)
     features_scaled = scaler.transform(features)
     prediction = rf.predict(features_scaled)[0]
-    proba = rf.predict_proba(features_scaled).max()
+    confidence = rf.predict_proba(features_scaled).max()
 
-    return prediction, proba
+    return prediction, confidence, None
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -46,35 +56,25 @@ def index():
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
 
-        # Run prediction
-        pred_class, confidence = predict_image_class(filepath)
+        # Run YOLO + Classification
+        pred_class, confidence, error_msg = check_and_classify_mango(filepath)
 
-        # return render_template("index.html", image_path=filepath,
-        #                        prediction=pred_class,
-        #                        confidence=f"{confidence * 100:.2f}%")
-
-        from threading import Timer
-
-        # Function to delete the file after delay
-        def delete_file_delayed(path, delay=5):
+        def delete_file_delayed(path, delay=10):
             def delete():
                 if os.path.exists(path):
                     os.remove(path)
             Timer(delay, delete).start()
 
+        delete_file_delayed(filepath)
 
-        # Schedule deletion
-        delete_file_delayed(filepath, delay=10)
-
-        # Show the result
-        return render_template("index.html", image_path=filepath,
-                            prediction=pred_class,
-                            confidence=f"{confidence * 100:.2f}%")
+        return render_template(
+            "index.html",
+            image_path=filepath,
+            prediction=pred_class,
+            confidence=f"{confidence * 100:.2f}%" if confidence else None,
+            error=error_msg
+        )
 
     return render_template("index.html", image_path=None)
-
-
 if __name__ == "__main__":
     app.run(debug=True)
-
-
