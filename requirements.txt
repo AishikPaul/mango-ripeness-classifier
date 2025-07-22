@@ -1,7 +1,9 @@
-numpy==1.24.3
-scikit-learn==1.2.2
+numpy
+scikit-learn
 opencv-python
 pandas
 scikit-image
 mahotas
 flask
+gunicorn
+ultralytics
