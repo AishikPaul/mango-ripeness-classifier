@@ -1,5 +1,7 @@
-numpy
+--prefer-binary
+cython==0.29.36
 scikit-learn==1.2.2
+numpy
 opencv-python
 pandas
 scikit-image
